@@ -19,20 +19,20 @@ const ids = {
   lucro_esperado_brinde: '68754fc9cc1d06da0409b1ee'
 };
 
-// Função para buscar os campos de um card
+// Busca os campos personalizados de um cartão
 async function getCardFields(cardId) {
   const url = `https://api.trello.com/1/cards/${cardId}?customFieldItems=true&key=${API_KEY}&token=${TOKEN}`;
   const { data } = await axios.get(url);
   return data.customFieldItems || [];
 }
 
-// Função para atualizar campo personalizado
+// Atualiza um campo personalizado do cartão
 async function setCustomField(cardId, fieldId, value) {
   const url = `https://api.trello.com/1/cards/${cardId}/customField/${fieldId}/item?key=${API_KEY}&token=${TOKEN}`;
   await axios.put(url, { value: { number: value.toString() } });
 }
 
-// Função para extrair valor do campo
+// Extrai valor de campo personalizado
 function getFieldValue(fields, id) {
   const field = fields.find(f => f.idCustomField === id);
   if (!field || !field.value) return 0;
@@ -41,7 +41,7 @@ function getFieldValue(fields, id) {
   return 0;
 }
 
-// Lógica para processar 1 card
+// Processa um cartão, mas só atualiza se realmente mudou (anti-loop)
 async function processCard(cardId) {
   const fields = await getCardFields(cardId);
 
@@ -57,12 +57,21 @@ async function processCard(cardId) {
   if (!lucroBrinde) lucroBrinde = getFieldValue(fields, ids.lucro_total_brinde_depende);
   const lucroEsperadoBrinde = lucroBrinde * qtdContas;
 
-  // Atualiza campos
-  if (lucroDinheiro && qtdContas) {
+  // Só atualiza se realmente mudou o valor (anti-loop)
+  const atualEsperadoDinheiro = getFieldValue(fields, ids.lucro_esperado_dinheiro);
+  if (
+    lucroDinheiro && qtdContas &&
+    Number(atualEsperadoDinheiro).toFixed(2) !== lucroEsperadoDinheiro.toFixed(2)
+  ) {
     await setCustomField(cardId, ids.lucro_esperado_dinheiro, lucroEsperadoDinheiro.toFixed(2));
     console.log(`[Dinheiro] Card ${cardId} atualizado para ${lucroEsperadoDinheiro}`);
   }
-  if (lucroBrinde && qtdContas) {
+
+  const atualEsperadoBrinde = getFieldValue(fields, ids.lucro_esperado_brinde);
+  if (
+    lucroBrinde && qtdContas &&
+    Number(atualEsperadoBrinde).toFixed(2) !== lucroEsperadoBrinde.toFixed(2)
+  ) {
     await setCustomField(cardId, ids.lucro_esperado_brinde, lucroEsperadoBrinde.toFixed(2));
     console.log(`[Brinde] Card ${cardId} atualizado para ${lucroEsperadoBrinde}`);
   }
@@ -84,7 +93,12 @@ app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 });
 
-// Render usa process.env.PORT, local usa 3000
+// Endpoint opcional para teste/status no navegador
+app.get('/', (req, res) => {
+  res.send('Full Green Trello Webhook ativo!');
+});
+
+// Porta padrão Render ou local
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor webhook ouvindo na porta ${PORT}`);
