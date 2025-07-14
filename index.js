@@ -3,17 +3,29 @@ async function processCard(cardId) {
 
   const qtdContas = getFieldValue(fields, ids.qtd_contas_ativas);
 
-  // Lucro dinheiro
-  let lucroDinheiro = getFieldValue(fields, ids.lucro_total_dinheiro);
-  if (!lucroDinheiro) lucroDinheiro = getFieldValue(fields, ids.lucro_total_dinheiro_depende);
+  // Lucro dinheiro: PRIORIZE o campo preenchido (mesmo se for zero)
+  let lucroDinheiro = null;
+  if (fields.some(f => f.idCustomField === ids.lucro_total_dinheiro)) {
+    lucroDinheiro = getFieldValue(fields, ids.lucro_total_dinheiro);
+  } else if (fields.some(f => f.idCustomField === ids.lucro_total_dinheiro_depende)) {
+    lucroDinheiro = getFieldValue(fields, ids.lucro_total_dinheiro_depende);
+  } else {
+    lucroDinheiro = 0;
+  }
   const lucroEsperadoDinheiro = lucroDinheiro * qtdContas;
 
-  // Lucro brinde
-  let lucroBrinde = getFieldValue(fields, ids.lucro_total_brinde);
-  if (!lucroBrinde) lucroBrinde = getFieldValue(fields, ids.lucro_total_brinde_depende);
+  // Lucro brinde: mesma lógica
+  let lucroBrinde = null;
+  if (fields.some(f => f.idCustomField === ids.lucro_total_brinde)) {
+    lucroBrinde = getFieldValue(fields, ids.lucro_total_brinde);
+  } else if (fields.some(f => f.idCustomField === ids.lucro_total_brinde_depende)) {
+    lucroBrinde = getFieldValue(fields, ids.lucro_total_brinde_depende);
+  } else {
+    lucroBrinde = 0;
+  }
   const lucroEsperadoBrinde = lucroBrinde * qtdContas;
 
-  // Sempre atualiza se mudou, mesmo que seja zero
+  // Sempre atualiza se mudou, mesmo para zero
   const atualEsperadoDinheiro = getFieldValue(fields, ids.lucro_esperado_dinheiro);
   if (
     Number(atualEsperadoDinheiro).toFixed(2) !== lucroEsperadoDinheiro.toFixed(2)
