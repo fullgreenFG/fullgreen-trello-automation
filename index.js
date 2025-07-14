@@ -1,5 +1,3 @@
-// ...código anterior...
-
 async function processCard(cardId) {
   const fields = await getCardFields(cardId);
 
